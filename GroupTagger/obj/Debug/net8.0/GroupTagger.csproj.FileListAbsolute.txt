@@ -1,0 +1,12 @@
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\bin\Debug\net8.0\GroupTagger.deps.json
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\bin\Debug\net8.0\GroupTagger.dll
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\bin\Debug\net8.0\GroupTagger.pdb
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagger.csproj.AssemblyReference.cache
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagger.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagger.AssemblyInfoInputs.cache
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagger.AssemblyInfo.cs
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagger.csproj.CoreCompileInputs.cache
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagger.dll
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\refint\GroupTagger.dll
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagger.pdb
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\ref\GroupTagger.dll
