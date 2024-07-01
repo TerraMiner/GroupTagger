@@ -22,7 +22,7 @@ public class DatabaseHandler(GroupTagger plugin) {
     public string GetQuery3(int sid, long currentTime) {
         return $"DELETE FROM vip_users " +
                $"WHERE sid = {sid} " +
-               $"AND expires <= {currentTime};";
+               $"AND expires <= {currentTime} AND expires > 0;";
     }
 
 
