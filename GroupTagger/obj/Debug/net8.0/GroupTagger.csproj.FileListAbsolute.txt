@@ -10,3 +10,4 @@ C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagge
 C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\refint\GroupTagger.dll
 C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagger.pdb
 C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\ref\GroupTagger.dll
+C:\Users\sasha\RiderProjects\GroupTagger\GroupTagger\obj\Debug\net8.0\GroupTagger.sourcelink.json

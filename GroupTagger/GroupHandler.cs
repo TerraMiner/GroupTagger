@@ -6,140 +6,95 @@ using CounterStrikeSharp.API.Modules.Entities;
 namespace GroupTagger;
 
 public class GroupHandler(GroupTagger plugin) {
-    private readonly Dictionary<int, SteamID> GrantedAdmins = new();
+    public Dictionary<int, GroupData> Users = new();
 
-    public Dictionary<int, SteamID> GetGrantedAdmins() {
-        return GrantedAdmins;
+    public async void RemoveAllExpired() {
+        if (plugin.Config.removeexpired == 0) return;
+        var sid = plugin.Config.serverId;
+        var currentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var sql = plugin.Database.GetQuery3(sid, currentTimestamp);
+        await plugin.Database.Query(sql, _ => {});
     }
-
-    public async Task SetFlagsToVips(SteamID steamId) {
+    
+    public async void UpdatePlayer(SteamID steamId) {
         var accountId = plugin.Steam.GetAccountId(steamId);
-        Group? group = null;
+        GroupData? group = null;
 
-        var sid = plugin.Config.sid;
-        long currentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-
+        var sid = plugin.Config.serverId;
+        var currentTimestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var sql = plugin.Database.GetQuery1(accountId, sid, currentTimestamp);
 
         await plugin.Database.Query(sql, reader => {
-            var accId = reader.GetInt32("account_id");
             var tag = reader.GetString("group");
-
-            plugin.Logger.Print($"Put into list {accId}, {tag}, {sid}");
-            group = new Group(steamId, tag, sid);
+            group = new GroupData(steamId, tag, sid);
         });
 
-        if (group == null) return;
-        Server.NextFrame(() => { SetVipFlags(group); });
+        UpdateFlags(steamId, group);
     }
 
-    public async Task SetFlagsToVips(string accountIds) {
-        var admins = new List<Group>();
-        var sid = plugin.Config.sid;
+    public async Task UpdatePlayers(string accountIds) {
+        var sid = plugin.Config.serverId;
         var currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         var sql = plugin.Database.GetQuery2(sid, currentTime, accountIds);
-
+        var actualAdmins = new Dictionary<int, GroupData>();
         await plugin.Database.Query(sql, reader => {
-            var accId = reader.GetInt32("account_id");
             var group = reader.GetString("group");
-
-            plugin.Logger.Print($"Set vip flags to {accId}, {group}");
-            admins.Add(new Group(plugin.Steam.GetSteamId(accId), group, sid));
+            var accId = reader.GetInt32("account_id");
+            var steamId = plugin.Steam.GetSteamId(accId);
+            actualAdmins.Add(accId, new GroupData(steamId, group, sid));
+            plugin.Logger.Print($"{accId} is Actual with {group}");
         });
-
-        Server.NextFrame(() => { SetVipFlags(admins); });
+        UpdatePlayers(actualAdmins);
     }
 
-    public void SetVipFlags(Group admin) {
-        var adminData = AdminManager.GetPlayerAdminData(admin.Steamid);
+    private void UpdatePlayers(Dictionary<int, GroupData> validAdmins) {
+        var oldRemovedUsers = Users.Where(it => !validAdmins.ContainsKey(it.Key)).ToDictionary();
+        var newNotAddedUsers = validAdmins.Where(it => !Users.ContainsKey(it.Key)).ToDictionary();
 
-        if (adminData != null) {
-            adminData.Flags.Values
-                .SelectMany(flagSet => flagSet)
-                .Where(IsPluginFlag)
-                .ToList()
-                .ForEach(it => AdminManager.RemovePlayerPermissions(admin.Steamid, it));
-        }
-        else {
-            AdminManager.RemovePlayerPermissions(admin.Steamid);
+        foreach (var (accId, oldGroupData) in oldRemovedUsers) {
+            Revoke(oldGroupData.steamId);
+            Users.Remove(accId);
+            plugin.Logger.Print($"Removed {accId}");
         }
 
-
-        if (admin.Sid != plugin.Config.sid) return;
-
-        var accountId = plugin.Steam.GetAccountId(admin.Steamid);
-        if (!GrantedAdmins.ContainsKey(accountId)) {
-            GrantedAdmins[accountId] = admin.Steamid;
+        foreach (var (accId, newGroupData) in newNotAddedUsers) {
+            Grant(newGroupData);
+            Users.Add(accId, newGroupData);
+            validAdmins.Remove(accId);
+            plugin.Logger.Print($"Added {accId}");
         }
 
-        plugin.Config.ConvertVips
-            .Where(it => admin.VipFlags.Contains(it.Key))
-            .Select(it => it.Value)
-            .ToList()
-            .ForEach(it => {
-                AdminManager.AddPlayerPermissions(admin.Steamid, it.ToArray());
-                plugin.Logger.Print($"Admin {admin.Steamid.SteamId3} converted to {string.Join(", ", it)}");
-            });
-    }
-
-    public void SetVipFlags(List<Group> admins) {
-        foreach (var admin in admins) {
-            SetVipFlags(admin);
+        foreach (var groupData in validAdmins.Values) {
+            UpdateFlags(groupData.steamId, groupData);
         }
     }
 
-    public async Task ValidateAdminFlags(string accountIds) {
-        var sid = plugin.Config.sid;
-        var currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var sql = plugin.Database.GetQuery2(sid, currentTime, accountIds);
-        var validAdmins = new HashSet<int>();
-        await plugin.Database.Query(sql, reader => validAdmins.Add(reader.GetInt32("account_id")));
-        ValidateAndRemoveFlags(validAdmins);
-    }
+    public void UpdateFlags(SteamID steamId, GroupData? groupData) {
+        var accId = plugin.Steam.GetAccountId(steamId);
 
-    public async Task ValidateAdminFlags(SteamID steamId) {
-        var accountId = plugin.Steam.GetAccountId(steamId);
-        if (!GrantedAdmins.ContainsKey(accountId)) return;
-        var sid = plugin.Config.sid;
-        var time = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var sql = plugin.Database.GetQuery1(accountId, sid, time);
-        var validAdmins = new HashSet<int>();
-        await plugin.Database.Query(sql, reader => validAdmins.Add(reader.GetInt32("account_id")));
-        ValidateAndRemoveFlags(validAdmins);
-    }
-
-    private void ValidateAndRemoveFlags(HashSet<int> validAdmins) {
-        foreach (var (accountId, steamId) in GrantedAdmins) {
-            if (!validAdmins.Contains(accountId)) {
-                var adminData = AdminManager.GetPlayerAdminData(steamId);
-                if (adminData != null) {
-                    adminData.Flags
-                        .SelectMany(it => it.Value)
-                        .Where(IsPluginFlag)
-                        .ToList()
-                        .ForEach(it => AdminManager.RemovePlayerPermissions(steamId, it));
-                }
-                else {
-                    AdminManager.RemovePlayerPermissions(steamId);
-                }
-
-                plugin.Logger.Print($"All flags removed for admin {steamId}");
-            }
-            else {
-                AdminManager.RemovePlayerPermissions(steamId);
-            }
+        if (groupData == null) {
+            Revoke(steamId);
+            Users.Remove(accId);
+            plugin.Logger.Print($"GroupData {accId} is null");
+            return;
         }
 
-        foreach (var validAdmin in validAdmins) {
-            GrantedAdmins.Remove(validAdmin);
+        if (!Users.TryGetValue(accId, out var oldGroup)) {
+            Users[accId] = groupData;
         }
+
+        if (oldGroup != null && (oldGroup.group == groupData.group || !IsPluginFlag(groupData.group))) return;
+
+        if (oldGroup != null) Revoke(steamId);
+        else Revoke(steamId);
+
+        Grant(groupData);
+
+        var oldGroupTag = oldGroup != null ? oldGroup.group : "null";
+        plugin.Logger.Print($"Updated tag {oldGroupTag} to {groupData.group} for {accId}");
     }
 
-    private bool IsPluginFlag(string flag) {
-        return plugin.Config.ConvertVips.Values.Any(it => it.Contains(flag));
-    }
-
-    public void UpdateGroup() {
+    public void UpdatePlayers() {
         var players = Utilities.GetPlayers();
         if (players.Count == 0) return;
         Task.Run(async () => {
@@ -148,19 +103,11 @@ public class GroupHandler(GroupTagger plugin) {
                 .ToList();
 
             var delimited = string.Join(",", filtered);
-            await ValidateAdminFlags(delimited);
-            await SetFlagsToVips(delimited);
+            await UpdatePlayers(delimited);
         });
     }
 
-    public void UpdateGroup(SteamID steamId) {
-        Task.Run(async () => {
-            await ValidateAdminFlags(steamId);
-            await SetFlagsToVips(steamId);
-        });
-    }
-
-    public void UpdateGroup(CCSPlayerController? user) {
+    public void UpdatePlayer(CCSPlayerController? user) {
         if (user == null) {
             plugin.Logger.Print("Event or Event.Userid is null");
             return;
@@ -174,6 +121,35 @@ public class GroupHandler(GroupTagger plugin) {
         }
 
         var steamId = new SteamID(userId.Value);
-        plugin.GroupHandler.UpdateGroup(steamId);
+        UpdatePlayer(steamId);
+    }
+
+    private void Grant(GroupData groupData) {
+        plugin.Config.ConvertVips
+            .Where(it => groupData.group.Contains(it.Key))
+            .Select(it => it.Value)
+            .ToList()
+            .ForEach(it => {
+                AdminManager.AddPlayerPermissions(groupData.steamId, it.ToArray());
+                plugin.Logger.Print($"Granted tag {groupData.group} to {groupData.steamId.SteamId3}");
+            });
+    }
+
+    private void Revoke(SteamID steamId) {
+        var adminData = AdminManager.GetPlayerAdminData(steamId);
+        if (adminData != null) {
+            adminData.Flags.Values
+                .SelectMany(flagSet => flagSet)
+                .Where(IsPluginFlag)
+                .ToList()
+                .ForEach(it => AdminManager.RemovePlayerPermissions(steamId, it));
+        }
+        else {
+            AdminManager.RemovePlayerPermissions(steamId);
+        }
+    }
+
+    private bool IsPluginFlag(string flag) {
+        return plugin.Config.ConvertVips.Values.Any(it => it.Contains(flag));
     }
 }

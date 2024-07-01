@@ -18,6 +18,13 @@ public class DatabaseHandler(GroupTagger plugin) {
                $"AND (expires > {currentTime} OR expires = 0) " +
                $"AND account_id IN ({accountIds});";
     }
+    
+    public string GetQuery3(int sid, long currentTime) {
+        return $"DELETE FROM vip_users " +
+               $"WHERE sid = {sid} " +
+               $"AND expires <= {currentTime};";
+    }
+
 
     public void InitializeDatabaseAddress(string value) {
         _databaseAddress = value;

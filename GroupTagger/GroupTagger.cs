@@ -7,6 +7,7 @@ public class GroupTagger : BasePlugin, IPluginConfig<PluginConfig> {
 
     private CommandHandler CommandHandler;
     private EventHandler EventHandler;
+    // public GroupHandler GroupHandler;
     public GroupHandler GroupHandler;
     public DatabaseHandler Database;
     public SteamHandler Steam;
@@ -35,6 +36,7 @@ public class GroupTagger : BasePlugin, IPluginConfig<PluginConfig> {
         Logger = new Logger(this);
 
         Database.InitializeDatabaseAddress(address);
+        GroupHandler.RemoveAllExpired();
         EventHandler.RegisterEvents();
         CommandHandler.RegisterCommands();
 

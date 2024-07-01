@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GroupTagger")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9e1d37fbd69f75fc63b0cdec1e43b8502e7035d5")]
 [assembly: System.Reflection.AssemblyProductAttribute("GroupTagger")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GroupTagger")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
